@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: casino-config
+data:
+  JWT_SECRET: "clave-secreta-vidal-casino"
+  DB_USER: "casino"
+  DB_PASSWORD: "casino"
+  DB_NAME: "casino_db"

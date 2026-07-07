@@ -9,6 +9,8 @@ los expone para el dashboard del frontend. Comparte BD y JWT con casino-backend.
 Prefijo de rutas: /api/estadisticas
 """
 import os
+import time
+import psutil
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
@@ -46,6 +48,23 @@ app.add_middleware(
 #   - readiness: ¿está listo para recibir tráfico? Debe verificar la BD.
 # Luego configurar livenessProbe/readinessProbe en el Deployment de EKS.
 
+@app.get("/live")
+def live():
+    """Liveness: el proceso esta vivo (no depende de nadie externo)."""
+    return {"alive": True, "uptime_segundos": round(time.time() - INICIO, 1)}
+
+
+@app.get("/ready")
+def ready():
+    """Readiness basada en el uso real de CPU y memoria."""
+    cpu = psutil.cpu_percent(interval=0.1)
+    memoria = psutil.virtual_memory().percent
+    if memoria > READY_MAX_MEM_PERCENT:
+        raise HTTPException(
+            status_code=503,
+            detail={"ready": False, "cpu_%": cpu, "memoria_%": memoria, "umbral_%": READY_MAX_MEM_PERCENT},
+        )
+    return {"ready": True, "cpu_%": cpu, "memoria_%": memoria}
 
 @app.get("/api/estadisticas/mias")
 def mis_estadisticas(usuario: dict = Depends(usuario_actual)):

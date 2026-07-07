@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: estadisticas-service
+  labels:
+    app: estadisticas-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: estadisticas-service
+  template:
+    metadata:
+      labels:
+        app: estadisticas-service
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1                             
+          topologyKey: kubernetes.io/hostname     
+          whenUnsatisfiable: ScheduleAnyway      
+          labelSelector:
+            matchLabels:
+              app: estadisticas-service                
+
+      containers:
+        - name: estadisticas-service
+          image: 631932931672.dkr.ecr.us-east-1.amazonaws.com/estadisticas-service:latest
+          ports:
+            - containerPort: 8006
+          env:
+            - name: DB_HOST
+              value: "postgres-service"  
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: casino-config
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: casino-config
+                  key: DB_PASSWORD
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: casino-config
+                  key: DB_NAME
+            - name: JWT_SECRET
+              valueFrom:
+                configMapKeyRef:
+                  name: casino-config
+                  key: JWT_SECRET
+            - name: READY_MAX_MEM_PERCENT
+              value: "90.0"            
+            - name: ESTADISTICAS_N_EVENTOS
+              value: "10"
+
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: 8006
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8006
+            initialDelaySeconds: 10     
+            periodSeconds: 5
+            timeoutSeconds: 2
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"

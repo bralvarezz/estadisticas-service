@@ -1,0 +1,57 @@
+name: Deploy Bonos Service en EKS (CI/CD)
+
+on:
+  push:
+    branches: [ main, dev ]   
+  workflow_dispatch:   
+
+env:
+  AWS_REGION: us-east-1
+  CLUSTER_NAME: casino-eks   
+
+jobs:
+  deploy:
+    name: Build, push y deploy a EKS
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Descargar el codigo del repo
+        uses: actions/checkout@v4
+        
+      - name: 2. Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: 3. Login en Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        
+      - name: 4. Construir y subir la imagen a ECR
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          ECR_REPOSITORY: estadisticas-service           
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" -t "$REGISTRY/$ECR_REPOSITORY:latest" .
+          docker push "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$REGISTRY/$ECR_REPOSITORY:latest"
+          
+      - name: 5. Conectar kubectl al cluster
+        run: aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
+        
+      - name: 6. Desplegar estadisticas-service en Kubernetes
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          sed -i "s|<ACCOUNT_ID>|$ACCOUNT_ID|g; s|<REGION>|$AWS_REGION|g; s|:latest|:$IMAGE_TAG|g" k8s/deployment.yaml
+          kubectl apply -f k8s/
+          
+      - name: 7. Esperar al rollout y mostrar el resultado
+        run: |
+          kubectl apply -f k8s/configmap.yaml
+          kubectl rollout status deployment/estadisticas-service --timeout=180s
+          kubectl get pods -o wide
