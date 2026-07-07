@@ -29,7 +29,10 @@ spec:
             - containerPort: 8006
           env:
             - name: DB_HOST
-              value: "postgres-service"  
+              valueFrom:
+                configMapKeyRef:
+                  name: casino-config
+                  key: DB_HOST 
             - name: DB_PORT
               value: "5432"
             - name: DB_USER

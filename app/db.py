@@ -12,6 +12,9 @@ import psycopg2.extras
 import psycopg2.pool
 from psycopg2 import extensions
 
+INICIO = time.time()   
+READY_MAX_MEM_PERCENT = float(os.getenv("READY_MAX_MEM_PERCENT", "90"))
+
 # NUMERIC -> float para respuestas JSON nativas.
 _DEC2FLOAT = extensions.new_type(
     extensions.DECIMAL.values,
