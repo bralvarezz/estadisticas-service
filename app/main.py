@@ -19,6 +19,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from .auth import usuario_actual
 from .db import conexion, dict_cursor, esperar_bd
 
+INICIO = time.time()   
+READY_MAX_MEM_PERCENT = float(os.getenv("READY_MAX_MEM_PERCENT", "90"))
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
