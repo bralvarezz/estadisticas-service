@@ -1,4 +1,4 @@
-name: Deploy Bonos Service en EKS (CI/CD)
+name: Deploy Estadisticas Service en EKS (CI/CD)
 
 on:
   push:
